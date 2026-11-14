@@ -16,22 +16,22 @@ public:
 
     template <typename Subject, typename... Args>
     Wrapper(Subject* subj,
-        std::string(Subject::* method)(Args...),
-        const ArgList& default_args = {}) {
+            std::string (Subject::*method)(Args...),
+            const ArgList& default_args = {}) {
         init_arguments(subj, method != nullptr, sizeof...(Args), default_args);
         caller_ = [subj, method](const std::vector<std::string>& args) -> std::string {
             return call_helper(subj, method, args, std::index_sequence_for<Args...>{});
-            };
+        };
     }
 
     template <typename Subject, typename... Args>
     Wrapper(const Subject* subj,
-        std::string(Subject::* method)(Args...) const,
-        const ArgList& default_args = {}) {
+            std::string (Subject::*method)(Args...) const,
+            const ArgList& default_args = {}) {
         init_arguments(subj, method != nullptr, sizeof...(Args), default_args);
         caller_ = [subj, method](const std::vector<std::string>& args) -> std::string {
             return call_const_helper(subj, method, args, std::index_sequence_for<Args...>{});
-            };
+        };
     }
 
     ~Wrapper() noexcept = default;
@@ -54,8 +54,7 @@ public:
             auto iter = override_args.find(name);
             if (iter != override_args.end()) {
                 final_args.push_back(iter->second);
-            }
-            else {
+            } else {
                 final_args.push_back(default_args_.at(name));
             }
         }
@@ -65,9 +64,9 @@ public:
 
 private:
     void init_arguments(const void* subj,
-        bool has_method,
-        std::size_t expected_count,
-        const ArgList& default_args) {
+                        bool has_method,
+                        std::size_t expected_count,
+                        const ArgList& default_args) {
         if (subj == nullptr || !has_method) {
             throw std::invalid_argument("Subject pointer or method pointer is null");
         }
@@ -86,23 +85,23 @@ private:
 
     template <typename Subject, typename... Args, std::size_t... Is>
     static std::string call_helper(Subject* subj,
-        std::string(Subject::* method)(Args...),
-        const std::vector<std::string>& args,
-        std::index_sequence<Is...>) {
+                                   std::string (Subject::*method)(Args...),
+                                   const std::vector<std::string>& args,
+                                   std::index_sequence<Is...>) {
         return (subj->*method)(args[Is]...);
     }
 
     template <typename Subject, typename... Args, std::size_t... Is>
     static std::string call_const_helper(const Subject* subj,
-        std::string(Subject::* method)(Args...) const,
-        const std::vector<std::string>& args,
-        std::index_sequence<Is...>) {
+                                         std::string (Subject::*method)(Args...) const,
+                                         const std::vector<std::string>& args,
+                                         std::index_sequence<Is...>) {
         return (subj->*method)(args[Is]...);
     }
 
-    std::vector<std::string> arg_names_{};
-    ArgMap default_args_{};
-    std::function<std::string(const std::vector<std::string>&)> caller_{};
+    std::vector<std::string> arg_names_;
+    ArgMap default_args_;
+    std::function<std::string(const std::vector<std::string>&)> caller_;
 };
 
-#endif 
+#endif // WRAPPER_H
