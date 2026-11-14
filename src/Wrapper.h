@@ -104,4 +104,4 @@ private:
     std::function<std::string(const std::vector<std::string>&)> caller_;
 };
 
-#endif // WRAPPER_H
+#endif 
