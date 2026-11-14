@@ -10,7 +10,7 @@ void Document::set_text(const std::string& text) {
     text_ = text;
 }
 
-std::string Document::get_text() const {
+const std::string& Document::get_text() const noexcept {
     return text_;
 }
 
@@ -157,5 +157,5 @@ std::string Document::number_sentences(const std::string& separator) {
     }
 
     text_ = stream.str();
-    return text_;
+    return text_;    
 }
