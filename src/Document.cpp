@@ -14,8 +14,19 @@ std::string Document::get_text() const {
     return text_;
 }
 
-bool Document::is_word_char(char c) noexcept {
-    return std::isalnum(static_cast<unsigned char>(c)) != 0;
+bool Document::is_word_char(char symbol) noexcept {
+    return std::isalnum(static_cast<unsigned char>(symbol)) != 0;
+}
+
+bool Document::is_sentence_end(char symbol) noexcept {
+    return symbol == '.' || symbol == '!' || symbol == '?';
+}
+
+bool Document::is_whole_word_at(std::size_t position, std::size_t length) const noexcept {
+    bool left_ok = (position == 0) || !is_word_char(text_[position - 1]);
+    std::size_t end_pos = position + length;
+    bool right_ok = (end_pos >= text_.length()) || !is_word_char(text_[end_pos]);
+    return left_ok && right_ok;
 }
 
 std::string Document::replace_words(const std::string& old_word, const std::string& new_word) {
@@ -23,74 +34,57 @@ std::string Document::replace_words(const std::string& old_word, const std::stri
         return text_;
     }
 
-    std::size_t pos = 0;
-    while ((pos = text_.find(old_word, pos)) != std::string::npos) {
-        bool left_ok = (pos == 0) || !is_word_char(text_[pos - 1]);
-        std::size_t end_pos = pos + old_word.length();
-        bool right_ok = (end_pos == text_.length()) || !is_word_char(text_[end_pos]);
-
-        if (left_ok && right_ok) {
-            text_.replace(pos, old_word.length(), new_word);
-            pos += new_word.length();
+    std::size_t position = 0;
+    while ((position = text_.find(old_word, position)) != std::string::npos) {
+        if (is_whole_word_at(position, old_word.length())) {
+            text_.replace(position, old_word.length(), new_word);
+            position += new_word.length();
         }
         else {
-            pos += 1;
+            position += 1;
         }
     }
     return text_;
 }
 
-std::string Document::find_phrase(const std::string& phrase) {
+std::string Document::find_phrase(const std::string& phrase) const {
     if (phrase.empty()) {
-        return "Empty phrase provided.";
+        return "Not found";
     }
-
-    std::vector<std::size_t> positions;
-    std::size_t pos = text_.find(phrase, 0);
-    while (pos != std::string::npos) {
-        positions.push_back(pos);
-        pos = text_.find(phrase, pos + 1);
+    if (text_.find(phrase) != std::string::npos) {
+        return "Found";
     }
+    return "Not found";
+}
 
-    std::ostringstream oss;
-    oss << "Phrase \"" << phrase << "\" found " << positions.size() << " time(s)";
-    if (!positions.empty()) {
-        oss << " at position(s): ";
-        for (std::size_t i = 0; i < positions.size(); ++i) {
-            if (i > 0) oss << ", ";
-            oss << positions[i];
+void Document::capitalize_all_words() {
+    bool in_word = false;
+    for (char& symbol : text_) {
+        if (is_word_char(symbol)) {
+            if (!in_word) {
+                symbol = static_cast<char>(std::toupper(static_cast<unsigned char>(symbol)));
+                in_word = true;
+            }
+        }
+        else {
+            in_word = false;
         }
     }
-    return oss.str();
 }
 
 std::string Document::capitalize_words(const std::string& target_word) {
     if (target_word.empty()) {
-        bool in_word = false;
-        for (char& c : text_) {
-            if (is_word_char(c)) {
-                if (!in_word) {
-                    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-                    in_word = true;
-                }
-            }
-            else {
-                in_word = false;
-            }
-        }
+        capitalize_all_words();
+        return text_;
     }
-    else {
-        std::size_t pos = 0;
-        while ((pos = text_.find(target_word, pos)) != std::string::npos) {
-            bool left_ok = (pos == 0) || !is_word_char(text_[pos - 1]);
-            std::size_t end_pos = pos + target_word.length();
-            bool right_ok = (end_pos == text_.length()) || !is_word_char(text_[end_pos]);
 
-            if (left_ok && right_ok) {
-                text_[pos] = static_cast<char>(std::toupper(static_cast<unsigned char>(text_[pos])));
-            }
-            pos += target_word.length();
+    std::size_t position = 0;
+    while ((position = text_.find(target_word, position)) != std::string::npos) {
+        if (is_whole_word_at(position, target_word.length())) {
+            auto upper_char = std::toupper(static_cast<unsigned char>(text_[position]));
+            text_[position] = static_cast<char>(upper_char);
         }
+        position += target_word.length();
     }
     return text_;
 }
@@ -99,40 +93,36 @@ std::string Document::capitalize_sentences(const std::string& delimiters) {
     std::string delims = delimiters.empty() ? ".!?" : delimiters;
     bool new_sentence = true;
 
-    for (char& c : text_) {
-        if (new_sentence && std::isalpha(static_cast<unsigned char>(c))) {
-            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    for (char& symbol : text_) {
+        if (new_sentence && std::isalpha(static_cast<unsigned char>(symbol)) != 0) {
+            symbol = static_cast<char>(std::toupper(static_cast<unsigned char>(symbol)));
             new_sentence = false;
         }
-
-        if (delims.find(c) != std::string::npos) {
+        if (delims.find(symbol) != std::string::npos) {
             new_sentence = true;
         }
     }
     return text_;
 }
 
-std::string Document::number_sentences(const std::string& separator) {
-    std::string sep = separator.empty() ? ". " : separator;
+std::vector<std::string> Document::split_sentences(const std::string& raw_text) {
     std::vector<std::string> sentences;
     std::string current;
 
-    for (std::size_t i = 0; i < text_.length(); ++i) {
-        char c = text_[i];
-        if (c == '\n' || c == '\r') {
+    for (std::size_t i = 0; i < raw_text.length(); ++i) {
+        char symbol = raw_text[i];
+        if (symbol == '\n' || symbol == '\r') {
             if (!current.empty() && current.back() != ' ') {
                 current += ' ';
             }
             continue;
         }
 
-        current += c;
-        if (c == '.' || c == '!' || c == '?') {
-            while (i + 1 < text_.length() &&
-                (text_[i + 1] == '.' || text_[i + 1] == '!' || text_[i + 1] == '?')) {
-                current += text_[++i];
+        current += symbol;
+        if (is_sentence_end(symbol)) {
+            while (i + 1 < raw_text.length() && is_sentence_end(raw_text[i + 1])) {
+                current += raw_text[++i];
             }
-
             std::size_t start = current.find_first_not_of(" \t");
             if (start != std::string::npos) {
                 sentences.push_back(current.substr(start));
@@ -145,15 +135,23 @@ std::string Document::number_sentences(const std::string& separator) {
     if (start != std::string::npos) {
         sentences.push_back(current.substr(start));
     }
+    return sentences;
+}
 
-    std::ostringstream oss;
-    for (std::size_t i = 0; i < sentences.size(); ++i) {
-        if (i > 0) {
-            oss << "\n";
+std::string Document::number_sentences(const std::string& separator) {
+    std::string prefix_sep = separator.empty() ? ". " : separator;
+    std::vector<std::string> sentences = split_sentences(text_);
+
+    std::ostringstream stream;
+    std::size_t index = 1;
+    for (const auto& sentence : sentences) {
+        if (index > 1) {
+            stream << '\n';
         }
-        oss << (i + 1) << sep << sentences[i];
+        stream << index << prefix_sep << sentence;
+        ++index;
     }
 
-    text_ = oss.str();
+    text_ = stream.str();
     return text_;
 }
