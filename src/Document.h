@@ -19,23 +19,19 @@ public:
     [[nodiscard]] std::string get_text() const;
 
     std::string replace_words(const std::string& old_word, const std::string& new_word);
-
     [[nodiscard]] std::string find_phrase(const std::string& phrase) const;
-
     std::string capitalize_words(const std::string& target_word);
-
     std::string capitalize_sentences(const std::string& delimiters);
-
     std::string number_sentences(const std::string& separator);
 
 private:
     static bool is_word_char(char symbol) noexcept;
     static bool is_sentence_end(char symbol) noexcept;
-    [[nodiscard]] bool is_whole_word_at(std::size_t position, std::size_t length) const noexcept;
+    [[nodiscard]] bool is_whole_word_at(std::size_t position, const std::string& word) const noexcept;
     void capitalize_all_words();
     static std::vector<std::string> split_sentences(const std::string& raw_text);
 
-    std::string text_{};
+    std::string text_;
 };
 
 #endif 
