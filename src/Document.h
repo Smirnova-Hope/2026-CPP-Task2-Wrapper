@@ -16,8 +16,9 @@ public:
     Document& operator=(Document&&) noexcept = default;
 
     void set_text(const std::string& text);
-    [[nodiscard]] std::string get_text() const;
+    [[nodiscard]] const std::string& get_text() const noexcept;
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     std::string replace_words(const std::string& old_word, const std::string& new_word);
     [[nodiscard]] std::string find_phrase(const std::string& phrase) const;
     std::string capitalize_words(const std::string& target_word);
