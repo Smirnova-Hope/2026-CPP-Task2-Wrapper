@@ -22,27 +22,28 @@ bool Document::is_sentence_end(char symbol) noexcept {
     return symbol == '.' || symbol == '!' || symbol == '?';
 }
 
-bool Document::is_whole_word_at(std::size_t position, std::size_t length) const noexcept {
+bool Document::is_whole_word_at(std::size_t position, const std::string& word) const noexcept {
     bool left_ok = (position == 0) || !is_word_char(text_[position - 1]);
-    std::size_t end_pos = position + length;
+    std::size_t end_pos = position + word.length();
     bool right_ok = (end_pos >= text_.length()) || !is_word_char(text_[end_pos]);
     return left_ok && right_ok;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::string Document::replace_words(const std::string& old_word, const std::string& new_word) {
     if (old_word.empty()) {
         return text_;
     }
 
-    std::size_t position = 0;
-    while ((position = text_.find(old_word, position)) != std::string::npos) {
-        if (is_whole_word_at(position, old_word.length())) {
+    std::size_t position = text_.find(old_word, 0);
+    while (position != std::string::npos) {
+        if (is_whole_word_at(position, old_word)) {
             text_.replace(position, old_word.length(), new_word);
             position += new_word.length();
-        }
-        else {
+        } else {
             position += 1;
         }
+        position = text_.find(old_word, position);
     }
     return text_;
 }
@@ -65,8 +66,7 @@ void Document::capitalize_all_words() {
                 symbol = static_cast<char>(std::toupper(static_cast<unsigned char>(symbol)));
                 in_word = true;
             }
-        }
-        else {
+        } else {
             in_word = false;
         }
     }
@@ -78,13 +78,13 @@ std::string Document::capitalize_words(const std::string& target_word) {
         return text_;
     }
 
-    std::size_t position = 0;
-    while ((position = text_.find(target_word, position)) != std::string::npos) {
-        if (is_whole_word_at(position, target_word.length())) {
+    std::size_t position = text_.find(target_word, 0);
+    while (position != std::string::npos) {
+        if (is_whole_word_at(position, target_word)) {
             auto upper_char = std::toupper(static_cast<unsigned char>(text_[position]));
             text_[position] = static_cast<char>(upper_char);
         }
-        position += target_word.length();
+        position = text_.find(target_word, position + target_word.length());
     }
     return text_;
 }
@@ -109,19 +109,22 @@ std::vector<std::string> Document::split_sentences(const std::string& raw_text) 
     std::vector<std::string> sentences;
     std::string current;
 
-    for (std::size_t i = 0; i < raw_text.length(); ++i) {
-        char symbol = raw_text[i];
+    std::size_t idx = 0;
+    while (idx < raw_text.length()) {
+        char symbol = raw_text[idx];
         if (symbol == '\n' || symbol == '\r') {
             if (!current.empty() && current.back() != ' ') {
                 current += ' ';
             }
+            ++idx;
             continue;
         }
 
         current += symbol;
         if (is_sentence_end(symbol)) {
-            while (i + 1 < raw_text.length() && is_sentence_end(raw_text[i + 1])) {
-                current += raw_text[++i];
+            while (idx + 1 < raw_text.length() && is_sentence_end(raw_text[idx + 1])) {
+                ++idx;
+                current += raw_text[idx];
             }
             std::size_t start = current.find_first_not_of(" \t");
             if (start != std::string::npos) {
@@ -129,6 +132,7 @@ std::vector<std::string> Document::split_sentences(const std::string& raw_text) 
             }
             current.clear();
         }
+        ++idx;
     }
 
     std::size_t start = current.find_first_not_of(" \t");
