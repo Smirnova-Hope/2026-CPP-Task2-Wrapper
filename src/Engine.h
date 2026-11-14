@@ -27,7 +27,7 @@ public:
     }
 
     [[nodiscard]] std::string execute(const std::string& command_name,
-        const Wrapper::ArgMap& args = {}) const {
+                                      const Wrapper::ArgMap& args = {}) const {
         auto iter = commands_.find(command_name);
         if (iter == commands_.end()) {
             throw std::runtime_error("Command not found: " + command_name);
@@ -36,7 +36,7 @@ public:
     }
 
 private:
-    std::map<std::string, Wrapper*> commands_{};
+    std::map<std::string, Wrapper*> commands_;
 };
 
 #endif
